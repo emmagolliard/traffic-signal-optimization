@@ -5,23 +5,22 @@ import matplotlib.pyplot as plt
 from baseline_webster import webster_delay
 from model_lp import optimize_cycle
 
-# Parameters
-CYCLE = 90.0
-SATURATION = 0.5
+CYCLE = 90.0            # signal cycle (s)
+SATURATION = 0.5        # saturation flow (veh/s)
 
-G_MIN = 25.0
-G_MAX = 65.0
+G_MIN = 25.0            # min green (s)
+G_MAX = 65.0            # max green (s)
 
-NS_SHARE = 0.6
-EO_SHARE = 0.4
+NS_SHARE = 0.6          # share of NS flow
+EO_SHARE = 0.4          # share of EO flow
 
-X_MAX = 0.90  # stability limit (keep x <= 0.90)
+X_MAX = 0.90             # stability limit (x <= 0.9)
 
 KAGGLE_CSV = "Metro_Interstate_Traffic_Volume.csv"
 
 
 def avg_delay(flow_NS_vph, flow_EO_vph, g_NS, g_EO):
-    """Average delay per vehicle (s/veh), weighted by flows."""
+    """Flow-weighted average delay (s/veh)."""
     f_ns = flow_NS_vph / 3600.0
     f_eo = flow_EO_vph / 3600.0
 
@@ -38,14 +37,14 @@ def avg_delay(flow_NS_vph, flow_EO_vph, g_NS, g_EO):
 def main():
     scenarios = []
 
-    # Toy scenarios
+    # Simple toy scenarios
     scenarios += [
         ("toy", "toy_low", 600.0),
         ("toy", "toy_medium", 1200.0),
         ("toy", "toy_high", 1800.0),
     ]
 
-    # Kaggle scenarios (if file exists)
+    # Kaggle scenarios (selected hours)
     if os.path.exists(KAGGLE_CSV):
         df = pd.read_csv(KAGGLE_CSV)
         df["date_time"] = pd.to_datetime(df["date_time"])
@@ -59,29 +58,33 @@ def main():
     results = []
 
     for source, name, flow_total in scenarios:
+        # Split total flow
         flow_NS = NS_SHARE * flow_total
         flow_EO = EO_SHARE * flow_total
 
-        # Baseline (equal split)
+        # Baseline: equal green split
         g_ns_base = CYCLE / 2.0
         g_eo_base = CYCLE / 2.0
         d_base = avg_delay(flow_NS, flow_EO, g_ns_base, g_eo_base)
 
-        # Stability-based minimum green times
+        # Minimum green for stability
         gmin_ns = (flow_NS / 3600.0) * CYCLE / (X_MAX * SATURATION)
         gmin_eo = (flow_EO / 3600.0) * CYCLE / (X_MAX * SATURATION)
 
         gmin_eff = max(G_MIN, gmin_ns, gmin_eo)
         gmax_eff = min(G_MAX, CYCLE - gmin_eff)
 
+        # Fallback if infeasible
         if gmin_eff > gmax_eff:
-            gmin_eff, gmax_eff = G_MIN, G_MAX  # fallback
+            gmin_eff, gmax_eff = G_MIN, G_MAX
 
-        # LP solution
-        g_ns_lp, g_eo_lp = optimize_cycle(flow_NS, flow_EO, g_min=gmin_eff, g_max=gmax_eff, cycle=CYCLE)
+        # LP optimization
+        g_ns_lp, g_eo_lp = optimize_cycle(
+            flow_NS, flow_EO, g_min=gmin_eff, g_max=gmax_eff, cycle=CYCLE
+        )
         d_lp = avg_delay(flow_NS, flow_EO, g_ns_lp, g_eo_lp)
 
-        # Improvement (%)
+        # Relative improvement
         imp = 100.0 * (d_base - d_lp) / d_base if d_base > 0 and d_base < 1e18 else None
 
         results.append({
@@ -99,11 +102,12 @@ def main():
             "improvement_pct": imp
         })
 
+    # Save results
     out = pd.DataFrame(results)
     out.to_csv("results_summary.csv", index=False)
     print(out)
 
-    # Plot
+    # Plot comparison
     plt.figure()
     plt.plot(out["scenario"], out["delay_baseline_sveh"], marker="o", label="Baseline")
     plt.plot(out["scenario"], out["delay_LP_sveh"], marker="o", label="LP")
