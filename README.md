@@ -22,3 +22,7 @@ Experiments are conducted on both synthetic scenarios and real traffic demand da
 ## How to run
 ```bash
 python experiments.py
+
+## Dataset
+The file `Metro_Interstate_Traffic_Volume.csv` is included in this repository.
+Due to its size, GitHub may not display it directly, but it can be downloaded using the "Raw" or "Download" option.
