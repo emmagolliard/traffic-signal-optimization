@@ -19,10 +19,12 @@ Experiments are conducted on both synthetic scenarios and real traffic demand da
 - `results_summary.csv`: summary of experimental results
 - `delay_comparison.png`: baseline vs LP comparison plot
 
+## Dataset
+The file `Metro_Interstate_Traffic_Volume.csv` is included in this repository.
+Due to its size, GitHub may not display it directly, but it can be downloaded using the "Raw" or "Download" option.
+
 ## How to run
 ```bash
 python experiments.py
 
-## Dataset
-The file `Metro_Interstate_Traffic_Volume.csv` is included in this repository.
-Due to its size, GitHub may not display it directly, but it can be downloaded using the "Raw" or "Download" option.
+
